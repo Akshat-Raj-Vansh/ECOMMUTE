@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "82071627749",
+    "firebase_url": "https://rough-app.firebaseio.com",
+    "project_id": "rough-app",
+    "storage_bucket": "rough-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82071627749:android:e39c153c3ac5be9eea710c",
+        "android_client_info": {
+          "package_name": "com.example.roughapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "82071627749-oi346f4cdrcnrresiv8uq2ehr19lge9r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.roughapp",
+            "certificate_hash": "98a128eaf7130cd9554d25d9aa0fd2472d50e133"
+          }
+        },
+        {
+          "client_id": "82071627749-98ke2e3nvlpgtp4hpm383kgqdg6tgn2m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjHWKEGiV0vcs2dKZcLilkeLISWZfsDvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "82071627749-98ke2e3nvlpgtp4hpm383kgqdg6tgn2m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
