@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Rough App</string>
+    <string name="app_name">Smart Bikes</string>
     <string name="tab_text_1">Home</string>
     <string name="tab_text_2">Home</string>
     <string name="tab_text_3">Home</string>
@@ -16,4 +16,5 @@
     <string name="barcode_success">Barcode read successfully</string>
     <string name="barcode_failure">No barcode captured</string>
     <string name="barcode_error">"Error reading barcode: %1$s"</string>
+    <string name="title_activity_maps">Map</string>
 </resources>
