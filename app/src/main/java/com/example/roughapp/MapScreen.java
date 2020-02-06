@@ -1,6 +1,7 @@
 package com.example.roughapp;
 
 import android.Manifest;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -24,6 +25,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.FragmentActivity;
@@ -358,16 +360,17 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
             case R.id.profile:
             case R.id.profile_nav:
                 Toast.makeText(MapScreen.this, "Profile Page will come here", Toast.LENGTH_SHORT).show();
-                Log.d("FirebaseFunctions",addNumber(5,6).toString());
+                Log.d("FirebaseFunctions", addNumber(5, 6).toString());
                 break;
             case R.id.logout_nav:
-                client.signOut().addOnCompleteListener(this, new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> history) {
-                        startActivity(new Intent(MapScreen.this, SplashScreen.class));
-                        finish();
-                    }
-                });
+                new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Log Out")
+                        .setMessage("Do you want to log out?")
+                        .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                logOut();
+                            }
+                        }).setNegativeButton("no", null).show();
                 break;
             case R.id.wallet_nav:
                 startActivity(new Intent(MapScreen.this, PaymentPortal.class));
@@ -379,10 +382,28 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                 displayMap();
                 break;
             case R.id.bookedRide:
-                endRide();
+                new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("End ride?")
+                        .setMessage("Do you want to end this ride?")
+                        .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                endRide();
+                            }
+                        }).setNegativeButton("no", null).show();
                 break;
         }
     }
+
+    private void logOut() {
+        client.signOut().addOnCompleteListener(this, new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> history) {
+                startActivity(new Intent(MapScreen.this, SplashScreen.class));
+                finish();
+            }
+        });
+    }
+
 
     private void endRide() {
         Toast.makeText(this, cycleID, Toast.LENGTH_SHORT).show();
@@ -412,9 +433,16 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         if (requestCode == RC_BARCODE_CAPTURE) {
             if (resultCode == CommonStatusCodes.SUCCESS) {
                 if (data != null) {
-                    Barcode barcode = data.getParcelableExtra(BarcodeCaptureActivity.BarcodeObject);
+                    final Barcode barcode = data.getParcelableExtra(BarcodeCaptureActivity.BarcodeObject);
                     Log.d(TAG, "Barcode read: " + barcode.displayValue);
-                    searchCycle(barcode.displayValue);
+                    new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Book Ride")
+                            .setMessage("Do you want to book this ride?")
+                            .setPositiveButton("yes", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    searchCycle(barcode.displayValue);
+                                }
+                            }).setNegativeButton("no", null).show();
                 } else {
                     Log.d(TAG, "No barcode captured, intent data is null");
                 }
