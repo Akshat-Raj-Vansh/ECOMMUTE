@@ -373,7 +373,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                 startActivity(new Intent(MapScreen.this, PaymentPortal.class));
                 finish();
                 break;
-            case R.id.showCurrentPos:f
+            case R.id.showCurrentPos:
                 userLocation.moveCamera(CameraUpdateFactory.newLatLngZoom(previousLocation, 18.5f));
                 showCurrPos = 1 - showCurrPos;
                 displayMap();
