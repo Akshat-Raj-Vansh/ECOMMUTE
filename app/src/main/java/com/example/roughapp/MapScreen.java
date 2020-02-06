@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.location.Address;
 import android.location.Geocoder;
@@ -40,6 +41,8 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -95,7 +98,8 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     private int showCurrPos = 0;
     private static final String TAG = "BarcodeMain";
     int isNavOpen = 0;
-    private Bitmap smallMarker;
+    private Bitmap bikeMarker;
+    private Bitmap stationMarker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,43 +150,70 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         userLocation.setMyLocationEnabled(true);
         displayMap();
         addBikes();
+        showStation();
     }
 
     private void addBikes() {
         Log.d("LocationX", "Reached Inside the function");
+        DatabaseReference databaseReference = firebaseDatabase.getReference().child("Location of Bikes");
+        databaseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot ds) {
+                Bike bikeLocation = new Bike();
+                bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike1").getValue(Bike.class)).getLatitude());
+                bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike1").getValue(Bike.class)).getLongitude());
+                bikeLocations.addMarker(new MarkerOptions()
+                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike2").getValue(Bike.class)).getLatitude());
+                bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike2").getValue(Bike.class)).getLongitude());
+                bikeLocations.addMarker(new MarkerOptions()
+                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike3").getValue(Bike.class)).getLatitude());
+                bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike3").getValue(Bike.class)).getLongitude());
+                bikeLocations.addMarker(new MarkerOptions()
+                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike4").getValue(Bike.class)).getLatitude());
+                bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike4").getValue(Bike.class)).getLongitude());
+                bikeLocations.addMarker(new MarkerOptions()
+                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike5").getValue(Bike.class)).getLatitude());
+                bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike5").getValue(Bike.class)).getLongitude());
+                bikeLocations.addMarker(new MarkerOptions()
+                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.w(TAG, "Failed to read value.", databaseError.toException());
+            }
+        });
+    }
+
+    private void showStation() {
+
+        Log.d("LocationX", "Reached Inside the function");
         DatabaseReference databaseReference = firebaseDatabase.getReference();
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
-                for (DataSnapshot ds : dataSnapshot.getChildren()) {
-                    Log.d("LocationX", "Reached Inside THE FUNCTION");
-                    Bike bikeLocation = new Bike();
-                    bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike1").getValue(Bike.class)).getLatitude());
-                    bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike1").getValue(Bike.class)).getLongitude());
-                    bikeLocations.addMarker(new MarkerOptions()
-                            .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                            .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(smallMarker));
-                    bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike2").getValue(Bike.class)).getLatitude());
-                    bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike2").getValue(Bike.class)).getLongitude());
-                    bikeLocations.addMarker(new MarkerOptions()
-                            .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                            .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(smallMarker));
-                    bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike3").getValue(Bike.class)).getLatitude());
-                    bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike3").getValue(Bike.class)).getLongitude());
-                    bikeLocations.addMarker(new MarkerOptions()
-                            .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                            .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(smallMarker));
-                    bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike4").getValue(Bike.class)).getLatitude());
-                    bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike4").getValue(Bike.class)).getLongitude());
-                    bikeLocations.addMarker(new MarkerOptions()
-                            .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                            .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(smallMarker));
-                    bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike5").getValue(Bike.class)).getLatitude());
-                    bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike5").getValue(Bike.class)).getLongitude());
-                    bikeLocations.addMarker(new MarkerOptions()
-                            .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                            .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(smallMarker));
-                }
+            public void onDataChange(@NonNull DataSnapshot ds) {
+                Bike bikeLocation = new Bike();
+                bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Station").getValue(Bike.class)).getLatitude());
+                bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Station").getValue(Bike.class)).getLongitude());
+                bikeLocations.addMarker(new MarkerOptions()
+                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .title("Station's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(stationMarker));
+                Circle circle = bikeLocations.addCircle(new CircleOptions()
+                        .center(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
+                        .radius(10)
+                        .strokeWidth(3)
+                        .strokeColor(getColor(R.color.colorMapStroke))
+                        .fillColor(getColor(R.color.colorMap)));
+
             }
 
             @Override
@@ -258,17 +289,6 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         userLocation.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18.5f));
                         showCurrPos = 1 - showCurrPos;
                     }
-//                    try {
-//                        List<Address> addressList = geocoder.getFromLocation(latitude, longitude, 1);
-//                        String address = addressList.get(0).getCountryName();
-//                        //userLocation.addMarker(new MarkerOptions().position(latLng).title(address));
-//                        if (showCurrPos == 1) {
-//                            userLocation.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18.5f));
-//                            showCurrPos = 1 - showCurrPos;
-//                        }
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-//                    }
                 }
 
                 @Override
@@ -309,28 +329,10 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         int width = 100;
         BitmapDrawable bitmapdraw = (BitmapDrawable) getResources().getDrawable(R.drawable.cycle);
         Bitmap b = bitmapdraw.getBitmap();
-        smallMarker = Bitmap.createScaledBitmap(b, width, height, false);
-    }
-
-    private Task<String> addMessage(String text) {
-        // Create the arguments to the callable function.
-        Map<String, Object> data = new HashMap<>();
-        data.put("text", text);
-        data.put("push", true);
-
-        return firebaseFunctions
-                .getHttpsCallable("addMessage")
-                .call(data)
-                .continueWith(new Continuation<HttpsCallableResult, String>() {
-                    @Override
-                    public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
-                        // This continuation runs on either success or failure, but if the task
-                        // has failed then getResult() will throw an Exception which will be
-                        // propagated down.
-                        String result = (String) task.getResult().getData();
-                        return result;
-                    }
-                });
+        bikeMarker = Bitmap.createScaledBitmap(b, width, height, false);
+        BitmapDrawable bitmapdraw2 = (BitmapDrawable) getResources().getDrawable(R.drawable.stand);
+        Bitmap b2 = bitmapdraw2.getBitmap();
+        stationMarker = Bitmap.createScaledBitmap(b2, width, height, false);
     }
 
     @Override
@@ -356,6 +358,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
             case R.id.profile:
             case R.id.profile_nav:
                 Toast.makeText(MapScreen.this, "Profile Page will come here", Toast.LENGTH_SHORT).show();
+                Log.d("FirebaseFunctions",addNumber(5,6).toString());
                 break;
             case R.id.logout_nav:
                 client.signOut().addOnCompleteListener(this, new OnCompleteListener<Void>() {
@@ -370,7 +373,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                 startActivity(new Intent(MapScreen.this, PaymentPortal.class));
                 finish();
                 break;
-            case R.id.showCurrentPos:
+            case R.id.showCurrentPos:f
                 userLocation.moveCamera(CameraUpdateFactory.newLatLngZoom(previousLocation, 18.5f));
                 showCurrPos = 1 - showCurrPos;
                 displayMap();
@@ -382,31 +385,16 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     }
 
     private void endRide() {
-        Toast.makeText(this, "12345", Toast.LENGTH_SHORT).show();
-
+        Toast.makeText(this, cycleID, Toast.LENGTH_SHORT).show();
         Map<String, Object> rideDetails = new HashMap<>();
         rideDetails.put("Status", "Free");
         rideDetails.put("Booked By", account.getId());
         rideDetails.put("End Time", Calendar.getInstance().getTime());
         firebaseFirestore
                 .collection("Bikes")
-                .document("12345")
+                .document(cycleID)
                 .update(rideDetails);
-        // Add a new document with a generated ID
-//        firebaseFirestore.collection("Bikes").document("12345")
-//                .set(rideDetails)
-//                .addOnSuccessListener(new OnSuccessListener<Void>() {
-//                    @Override
-//                    public void onSuccess(Void aVoid) {
-//                        Log.d("Firestore-Login", "DocumentSnapshot successfully written!");
-//                    }
-//                })
-//                .addOnFailureListener(new OnFailureListener() {
-//                    @Override
-//                    public void onFailure(@NonNull Exception e) {
-//                        Log.w("Firestore-Login", "Error writing document", e);
-//                    }
-//                });
+
         bookedRide.setVisibility(View.GONE);
         openScanner.setVisibility(View.VISIBLE);
     }
@@ -434,6 +422,27 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         } else {
             super.onActivityResult(requestCode, resultCode, data);
         }
+    }
+
+    private Task<String> addNumber(int first, int sec) {
+        // Create the arguments to the callable function.
+        Toast.makeText(MapScreen.this, "Inside the addNumber function", Toast.LENGTH_SHORT).show();
+        Map<String, Integer> data = new HashMap<>();
+        data.put("firstNumber", first);
+        data.put("secondNumber", sec);
+
+        return firebaseFunctions
+                .getHttpsCallable("addNumbers")
+                .call(data)
+                .continueWith(new Continuation<HttpsCallableResult, String>() {
+                    @Override
+                    public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
+                        String result = (String) task.getResult().getData();
+                        Toast.makeText(MapScreen.this, result, Toast.LENGTH_SHORT).show();
+                        Log.d("DebX", "inside here");
+                        return result;
+                    }
+                });
     }
 
 

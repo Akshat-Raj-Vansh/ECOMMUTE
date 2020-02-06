@@ -10,6 +10,8 @@
     <color name="colorTransparent">#00FFFFFF</color>
     <color name="colorWhite">#FFFFFF</color>
     <color name="colorTabText">#FFFFFF</color>
+    <color name="colorMap">#4A92E4FF</color>
+    <color name="colorMapStroke">#6119ECEC</color>
     <color name="colorWhiteDark">#F5F5F5</color>
     <color name="colorBlack">#000000</color>
 </resources>

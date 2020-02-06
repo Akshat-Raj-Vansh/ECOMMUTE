@@ -2,7 +2,6 @@ package com.example.roughapp;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,8 +28,6 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class LoginScreen extends AppCompatActivity {
 
@@ -43,12 +40,6 @@ public class LoginScreen extends AppCompatActivity {
 
     private LinearLayout Dots_Layout;
     private ImageView[] dots;
-
-    int currentPage = 0;
-    boolean scrolled = false;
-    Timer timer;
-    final long DELAY_MS = 500;//delay in milliseconds before task is to be executed
-    final long PERIOD_MS = 1500; // time in milliseconds between successive task executions.
 
     private int RC_SIGN_IN = 7;
 
