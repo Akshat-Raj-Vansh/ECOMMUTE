@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    tools:context=".PaymentPortal">
+    tools:context=".WalletScreen">
 
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appBarLayout"
@@ -91,6 +91,7 @@
             android:id="@+id/currentbal_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:textColor="@color/colorAccent"
             android:layout_margin="5dp"
             android:padding="10dp"
             android:fontFamily="@font/advent_pro"
@@ -107,21 +108,116 @@
             android:text="Rs. 0"
             android:textSize="30sp" />
     </LinearLayout>
+    <LinearLayout
+        android:id="@+id/dues_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/bal_layout">
 
+        <TextView
+            android:id="@+id/dues_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorAccent"
+            android:layout_margin="5dp"
+            android:padding="10dp"
+            android:fontFamily="@font/advent_pro"
+            android:text="Dues: "
+            android:textSize="30sp" />
+
+        <TextView
+            android:id="@+id/currentdues"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:padding="10dp"
+            android:fontFamily="@font/advent_pro"
+            android:text="Rs. 0"
+            android:textSize="30sp" />
+    </LinearLayout>
+    <androidx.cardview.widget.CardView
+        android:id="@+id/plans"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/dues_layout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="@color/colorPrimaryDark"
+        android:backgroundTint="@color/colorPrimaryDark"
+        app:cardCornerRadius="10dp"
+        android:layout_margin="5dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="30sp"
+                android:gravity="center"
+                android:padding="10dp"
+                android:textColor="@color/colorWhite"
+                android:text="Active Plans"
+                android:fontFamily="@font/advent_pro_thin"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+                <androidx.appcompat.widget.AppCompatCheckBox
+                    android:id="@+id/basic_plan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="20dp"
+                    android:fontFamily="@font/advent_pro_thin"
+                    android:text="Basic"
+                    android:padding="10dp"
+                    android:checked="true"
+                    android:layout_marginBottom="10dp"
+                    android:textColor="@color/colorWhite"
+                    android:textSize="20sp"/>
+                <androidx.appcompat.widget.AppCompatCheckBox
+                    android:id="@+id/advanced_plan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/advent_pro_thin"
+                    android:text="Advanced"
+                    android:padding="10dp"
+                    android:layout_marginBottom="10dp"
+                    android:textColor="@color/colorWhite"
+                    android:textSize="20sp"/>
+                <androidx.appcompat.widget.AppCompatCheckBox
+                    android:id="@+id/economy_plan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="20dp"
+                    android:padding="10dp"
+                    android:fontFamily="@font/advent_pro_thin"
+                    android:text="Economy"
+                    android:layout_marginBottom="10dp"
+                    android:textColor="@color/colorWhite"
+                    android:textSize="20sp"/>
+
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
     <TextView
         android:id="@+id/text_recharge"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/advent_pro"
+        android:fontFamily="@font/advent_pro_thin"
         android:gravity="center"
-        android:text="Recharge Your Wallet"
+        android:text="Pay your Dues"
         android:textColor="@color/colorPrimary"
-        android:layout_marginTop="50dp"
-        android:textSize="25sp"
+        android:layout_marginTop="10dp"
+        android:textSize="30sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/bal_layout" />
+        app:layout_constraintTop_toBottomOf="@+id/plans" />
 
     <EditText
         android:id="@+id/amount_et"

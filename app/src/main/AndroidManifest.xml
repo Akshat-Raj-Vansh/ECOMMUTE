@@ -34,7 +34,7 @@
             android:value="@string/google_maps_key" />
 
         <activity
-            android:name=".PaymentPortal"
+            android:name=".WalletScreen"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".MapScreen"

@@ -1,14 +1,12 @@
 package com.example.roughapp;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
-import android.location.Address;
-import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -20,8 +18,6 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -41,15 +37,11 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -68,10 +60,8 @@ import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.HttpsCallableResult;
 import com.mikhaellopez.circularimageview.CircularImageView;
 
-import java.io.IOException;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -102,6 +92,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     int isNavOpen = 0;
     private Bitmap bikeMarker;
     private Bitmap stationMarker;
+    private String value;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -143,6 +134,40 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         showCurrentPosition.setOnClickListener(this);
         bookedRide.setOnClickListener(this);
         displayMap();
+        NewAccountBonus();
+    }
+
+    private void NewAccountBonus() {
+        value = "0";
+        DocumentReference documentReference = firebaseFirestore.collection("Users").document(account.getId());
+        documentReference.get().
+                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                value = document.get("New").toString();
+                                if(value.equals("1")){
+                                    new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Welcome to ECOMMUTE!")
+                                            .setMessage("You are eligible for free ride for first 30 minutes!")
+                                            .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    dialog.dismiss();
+                                                }
+                                            }).show();
+                                }
+                                Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
+                            } else {
+                                Log.d("DEBUG", "Found null document");
+                            }
+                        } else {
+                            Log.d("DEBUG", "Error finding the document");
+                        }
+                    }
+                });
+
     }
 
     @Override
@@ -153,6 +178,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         displayMap();
         addBikes();
         showStation();
+        //  showCurrentPosition.performClick();
     }
 
     private void addBikes() {
@@ -341,7 +367,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.scan_qr:
-                scanQRCode();
+                checkMinBalance();
                 break;
             case R.id.more_button:
                 isNavOpen = 1 - isNavOpen;
@@ -360,7 +386,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
             case R.id.profile:
             case R.id.profile_nav:
                 Toast.makeText(MapScreen.this, "Profile Page will come here", Toast.LENGTH_SHORT).show();
-                Log.d("FirebaseFunctions", addNumber(5, 6).toString());
+                //Log.d("FirebaseFunctions", addNumber(5, 6).getResult());
                 break;
             case R.id.logout_nav:
                 new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Log Out")
@@ -373,7 +399,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         }).setNegativeButton("no", null).show();
                 break;
             case R.id.wallet_nav:
-                startActivity(new Intent(MapScreen.this, PaymentPortal.class));
+                startActivity(new Intent(MapScreen.this, WalletScreen.class));
                 finish();
                 break;
             case R.id.showCurrentPos:
@@ -393,6 +419,70 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                 break;
         }
     }
+
+    private void checkMinBalance() {
+        if (getPreDues() == 0 && getPreBalance() > 150)
+            scanQRCode();
+        else{
+            new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Warning!")
+                    .setMessage("You don't have enough balance to book a ride! Please clear your previous dues and have a minimum amount of Rs. 150 in your wallet to book this ride.")
+                    .setPositiveButton("Pay", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            startActivity(new Intent(MapScreen.this, WalletScreen.class));
+                            finish();
+                        }
+                    }).show();
+        }
+    }
+
+    private double getPreBalance() {
+        value = "0.0";
+        DocumentReference documentReference = firebaseFirestore.collection("Users").document(account.getId());
+        documentReference.get().
+                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                value = document.get("Balance").toString();
+                                Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
+                            } else {
+                                Log.d("DEBUG", "Found null document");
+                            }
+                        } else {
+                            Log.d("DEBUG", "Error finding the document");
+                        }
+                    }
+                });
+        return Double.valueOf(value);
+    }
+
+    private double getPreDues() {
+        value = "0.0";
+        DocumentReference documentReference = firebaseFirestore.collection("Users").document(account.getId());
+        documentReference.get().
+                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @SuppressLint("SetTextI18n")
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                value = document.get("Dues").toString();
+                                Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
+                            } else {
+                                Log.d("DEBUG", "Found null document");
+                            }
+                        } else {
+                            Log.d("DEBUG", "Error finding the document");
+                        }
+                    }
+                });
+        return Double.valueOf(value);
+    }
+
 
     private void logOut() {
         client.signOut().addOnCompleteListener(this, new OnCompleteListener<Void>() {

@@ -1,5 +1,6 @@
 package com.example.roughapp;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -9,6 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,14 +33,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public class PaymentPortal extends AppCompatActivity {
+public class WalletScreen extends AppCompatActivity implements View.OnClickListener {
 
 
     EditText amountEt;
     Button recharge, back;
-    String value, amount;
+    String value, amount, balance;
     private TextView currentbal;
+    private TextView currentdues;
     private GoogleSignInAccount account;
+    private CheckBox basic, advanced, economy;
 
     FirebaseFirestore database = FirebaseFirestore.getInstance();
     final int UPI_PAYMENT = 0;
@@ -46,40 +50,43 @@ public class PaymentPortal extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.payment_portal);
+        setContentView(R.layout.wallet_screen);
         initializeViews();
         account = GoogleSignIn.getLastSignedInAccount(this);
         updateDisplay();
-        recharge.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                amount = amountEt.getText().toString();
-                payUsingUpi(amount, "7355026029@ybl", account.getDisplayName(), "Payment to the developers");
-            }
-        });
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(PaymentPortal.this, MapScreen.class));
-            }
-        });
+        getPreDues();
+        recharge.setOnClickListener(this);
+        back.setOnClickListener(this);
+        basic.setOnClickListener(this);
+        advanced.setOnClickListener(this);
+        economy.setOnClickListener(this);
+        getPrePlan();
     }
+
     void initializeViews() {
         currentbal = findViewById(R.id.currentbal);
         recharge = findViewById(R.id.recharge);
         amountEt = findViewById(R.id.amount_et);
         back = findViewById(R.id.back_button);
+        currentdues = findViewById(R.id.currentdues);
+        basic = findViewById(R.id.basic_plan);
+        advanced = findViewById(R.id.advanced_plan);
+        economy = findViewById(R.id.economy_plan);
     }
+
     private void updateDisplay() {
         DocumentReference documentReference = database.collection("Users").document(account.getId());
         documentReference.get().
                 addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @SuppressLint("SetTextI18n")
                     @Override
                     public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                         if (task.isSuccessful()) {
                             DocumentSnapshot document = task.getResult();
                             if (document.exists()) {
-                                //currentbal.setText("Rs. "+ document.get("Balance").toString());
+                                //getNewBalance();
+                                balance = document.get("Balance").toString();
+                                currentbal.setText("Rs. " + balance);
                                 Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
                             } else {
                                 Log.d("DEBUG", "Found null document");
@@ -98,6 +105,44 @@ public class PaymentPortal extends AppCompatActivity {
                 .update("Balance", previously + Double.valueOf(amount));
         updateDisplay();
         //currentbal.setText(Double.toString(previously+ Double.valueOf(amount)));
+    }
+
+    private void getPrePlan() {
+        DocumentReference documentReference = database.collection("Users").document(account.getId());
+        documentReference.get().
+                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                value = document.get("Plan").toString();
+                                showPlan(value);
+                                Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
+                            } else {
+                                Log.d("DEBUG", "Found null document");
+                            }
+                        } else {
+                            Log.d("DEBUG", "Error finding the document");
+                        }
+                    }
+                });
+    }
+
+    private void showPlan(String value) {
+        if (value.equals("Basic")) {
+            basic.setChecked(true);
+            advanced.setChecked(false);
+            economy.setChecked(false);
+        } else if (value.equals("Advanced")) {
+            basic.setChecked(false);
+            advanced.setChecked(true);
+            economy.setChecked(false);
+        } else if (value.equals("Economy")) {
+            advanced.setChecked(false);
+            basic.setChecked(false);
+            economy.setChecked(true);
+        }
     }
 
     private double getPreBalance() {
@@ -123,6 +168,30 @@ public class PaymentPortal extends AppCompatActivity {
         return Double.valueOf(value);
     }
 
+    private double getPreDues() {
+        value = "0.0";
+        DocumentReference documentReference = database.collection("Users").document(account.getId());
+        documentReference.get().
+                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @SuppressLint("SetTextI18n")
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                value = document.get("Dues").toString();
+                                currentdues.setText("Rs. " + value);
+                                Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
+                            } else {
+                                Log.d("DEBUG", "Found null document");
+                            }
+                        } else {
+                            Log.d("DEBUG", "Error finding the document");
+                        }
+                    }
+                });
+        return Double.valueOf(value);
+    }
 
 
     void payUsingUpi(String amount, String upiId, String name, String note) {
@@ -146,7 +215,7 @@ public class PaymentPortal extends AppCompatActivity {
         if (null != chooser.resolveActivity(getPackageManager())) {
             startActivityForResult(chooser, UPI_PAYMENT);
         } else {
-            Toast.makeText(PaymentPortal.this, "No UPI app found, please install one to continue", Toast.LENGTH_SHORT).show();
+            Toast.makeText(WalletScreen.this, "No UPI app found, please install one to continue", Toast.LENGTH_SHORT).show();
         }
 
     }
@@ -181,7 +250,7 @@ public class PaymentPortal extends AppCompatActivity {
     }
 
     private void upiPaymentDataOperation(ArrayList<String> data) {
-        if (isConnectionAvailable(PaymentPortal.this)) {
+        if (isConnectionAvailable(WalletScreen.this)) {
             String str = data.get(0);
             Log.d("UPIPAY", "upiPaymentDataOperation: " + str);
             String paymentCancel = "";
@@ -205,15 +274,15 @@ public class PaymentPortal extends AppCompatActivity {
             if (status.equals("success")) {
                 //Code to handle successful transaction here.
                 updateDatabase();
-                Toast.makeText(PaymentPortal.this, "Transaction successful.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(WalletScreen.this, "Transaction successful.", Toast.LENGTH_SHORT).show();
                 Log.d("UPI", "responseStr: " + approvalRefNo);
             } else if ("Payment cancelled by user.".equals(paymentCancel)) {
-                Toast.makeText(PaymentPortal.this, "Payment cancelled by user.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(WalletScreen.this, "Payment cancelled by user.", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(PaymentPortal.this, "Transaction failed.Please try again", Toast.LENGTH_SHORT).show();
+                Toast.makeText(WalletScreen.this, "Transaction failed.Please try again", Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(PaymentPortal.this, "Internet connection is not available. Please check and try again", Toast.LENGTH_SHORT).show();
+            Toast.makeText(WalletScreen.this, "Internet connection is not available. Please check and try again", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -228,5 +297,53 @@ public class PaymentPortal extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.recharge:
+                amount = amountEt.getText().toString();
+                payUsingUpi(amount, "7355026029@ybl", account.getDisplayName(), "Payment to the developers");
+                break;
+            case R.id.back_button:
+                startActivity(new Intent(WalletScreen.this, MapScreen.class));
+                finish();
+                break;
+            case R.id.basic_plan:
+                setPlan("Basic");
+                advanced.setChecked(false);
+                economy.setChecked(false);
+                break;
+            case R.id.advanced_plan:
+                setPlan("Advanced");
+                basic.setChecked(false);
+                economy.setChecked(false);
+                break;
+            case R.id.economy_plan:
+                setPlan("Economy");
+                advanced.setChecked(false);
+                basic.setChecked(false);
+                break;
+        }
+    }
+
+    private void setPlan(String plan) {
+        Map<String, Object> userDetails = new HashMap<>();
+        userDetails.put("Plan", plan);
+        database.collection("Users").document(account.getId())
+                .update(userDetails)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("Firestore-Login", "DocumentSnapshot successfully written!");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w("Firestore-Login", "Error writing document", e);
+                    }
+                });
     }
 }
