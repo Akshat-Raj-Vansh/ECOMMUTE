@@ -1,7 +1,6 @@
 package com.example.roughapp;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -12,12 +11,16 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.DragEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -41,6 +44,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -57,6 +61,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.functions.FirebaseFunctions;
+import com.google.firebase.functions.FirebaseFunctionsException;
 import com.google.firebase.functions.HttpsCallableResult;
 import com.mikhaellopez.circularimageview.CircularImageView;
 
@@ -64,6 +69,9 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringTokenizer;
+
+import static android.view.View.GONE;
 
 public class MapScreen extends FragmentActivity implements OnMapReadyCallback, View.OnClickListener, View.OnDragListener {
 
@@ -71,8 +79,11 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     private GoogleMap bikeLocations;
     private CardView openScanner;
     private CardView bookedRide;
-    private Button more;
-    private CircularImageView showCurrentPosition;
+    private Button more, endride;
+    private String BookingTime, EndingTime;
+    private long bookedTime, endedTime;
+    private CircularImageView showCurrentPosition, bikeOptions;
+    long MillisecondTime, StartTime, TimeBuff, UpdateTime = 0L;
     private ConstraintLayout navMenu;
     private CircularImageView profilePic;
     private GoogleSignInAccount account;
@@ -80,16 +91,21 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     private GoogleSignInClient client;
     private GoogleSignInOptions gso;
     private String cycleID;
+    private TextView showDetails, timeElapsed, bookingTime;
     private Animation clockwise, anticlockise;
     private Button history, profile, logout, wallet, settings;
     private LocationManager locationManager;
     private FirebaseDatabase firebaseDatabase;
     private FirebaseFirestore firebaseFirestore;
     private LatLng previousLocation;
+    private LinearLayout details;
     private static final int RC_BARCODE_CAPTURE = 9001;
     private int showCurrPos = 0;
     private static final String TAG = "BarcodeMain";
     int isNavOpen = 0;
+    Handler handler;
+    int Hours, Seconds, Minutes, MilliSeconds;
+    private Marker bike1, bike2, bike3, bike4, bike5;
     private Bitmap bikeMarker;
     private Bitmap stationMarker;
     private String value;
@@ -133,9 +149,47 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         history.setOnClickListener(this);
         showCurrentPosition.setOnClickListener(this);
         bookedRide.setOnClickListener(this);
+        endride.setOnClickListener(this);
         displayMap();
         NewAccountBonus();
+        checkPreviousBooking();
     }
+
+    private void checkPreviousBooking() {
+        value = "NULL";
+        DocumentReference documentReference = firebaseFirestore.collection("Users").document(account.getId());
+        documentReference.get().
+                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                    @Override
+                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                        if (task.isSuccessful()) {
+                            DocumentSnapshot document = task.getResult();
+                            if (document.exists()) {
+                                value = document.get("Bike ID").toString();
+                                if (!value.equals("NULL")) {
+                                    showTimeElapsed();
+                                    cycleID = value;
+                                    Toast.makeText(MapScreen.this, value, Toast.LENGTH_SHORT).show();
+                                    bookingTime.setText(document.get("Booking Time").toString());
+                                    bookedRide.setVisibility(View.VISIBLE);
+                                    details.setVisibility(View.GONE);
+                                    showDetails.setVisibility(View.VISIBLE);
+                                    openScanner.setVisibility(View.GONE);
+                                } else if (value.equals("NULL")) {
+                                    bookedRide.setVisibility(View.GONE);
+                                    details.setVisibility(View.GONE);
+                                    showDetails.setVisibility(View.GONE);
+                                    openScanner.setVisibility(View.VISIBLE);
+                                }
+                            }
+                            Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
+                        } else {
+                            Log.d("DEBUG", "Found null document");
+                        }
+                    }
+                });
+    }
+
 
     private void NewAccountBonus() {
         value = "0";
@@ -148,7 +202,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                             DocumentSnapshot document = task.getResult();
                             if (document.exists()) {
                                 value = document.get("New").toString();
-                                if(value.equals("1")){
+                                if (value.equals("1")) {
                                     new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Welcome to ECOMMUTE!")
                                             .setMessage("You are eligible for free ride for first 30 minutes!")
                                             .setPositiveButton("Ok", new DialogInterface.OnClickListener() {
@@ -167,7 +221,6 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         }
                     }
                 });
-
     }
 
     @Override
@@ -175,44 +228,55 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         userLocation = googleMap;
         bikeLocations = googleMap;
         userLocation.setMyLocationEnabled(true);
+        bike1 = bikeLocations.addMarker(new MarkerOptions()
+                .position(new LatLng(50, 50))
+                .title("Bike's Location"));
+        bike1.setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+        bike2 = bikeLocations.addMarker(new MarkerOptions()
+                .position(new LatLng(50, 50))
+                .title("Bike's Location"));
+        bike3 = bikeLocations.addMarker(new MarkerOptions()
+                .position(new LatLng(50, 50))
+                .title("Bike's Location"));
+        bike4 = bikeLocations.addMarker(new MarkerOptions()
+                .position(new LatLng(50, 50))
+                .title("Bike's Location"));
+        bike5 = bikeLocations.addMarker(new MarkerOptions()
+                .position(new LatLng(50, 50))
+                .title("Bike's Location"));
+        bike1.setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+        bike2.setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+        bike3.setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+        bike4.setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+        bike5.setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
         displayMap();
         addBikes();
         showStation();
-        //  showCurrentPosition.performClick();
     }
 
     private void addBikes() {
         Log.d("LocationX", "Reached Inside the function");
         DatabaseReference databaseReference = firebaseDatabase.getReference().child("Location of Bikes");
+
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot ds) {
                 Bike bikeLocation = new Bike();
                 bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike1").getValue(Bike.class)).getLatitude());
                 bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike1").getValue(Bike.class)).getLongitude());
-                bikeLocations.addMarker(new MarkerOptions()
-                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bike1.setPosition(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()));
                 bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike2").getValue(Bike.class)).getLatitude());
                 bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike2").getValue(Bike.class)).getLongitude());
-                bikeLocations.addMarker(new MarkerOptions()
-                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bike2.setPosition(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()));
                 bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike3").getValue(Bike.class)).getLatitude());
                 bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike3").getValue(Bike.class)).getLongitude());
-                bikeLocations.addMarker(new MarkerOptions()
-                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bike3.setPosition(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()));
                 bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike4").getValue(Bike.class)).getLatitude());
                 bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike4").getValue(Bike.class)).getLongitude());
-                bikeLocations.addMarker(new MarkerOptions()
-                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bike4.setPosition(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()));
                 bikeLocation.setLatitude(Objects.requireNonNull(ds.child("Bike5").getValue(Bike.class)).getLatitude());
                 bikeLocation.setLongitude(Objects.requireNonNull(ds.child("Bike5").getValue(Bike.class)).getLongitude());
-                bikeLocations.addMarker(new MarkerOptions()
-                        .position(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()))
-                        .title("Bike's Location")).setIcon(BitmapDescriptorFactory.fromBitmap(bikeMarker));
+                bike5.setPosition(new LatLng(bikeLocation.getLatitude(), bikeLocation.getLongitude()));
             }
 
             @Override
@@ -241,7 +305,6 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         .strokeWidth(3)
                         .strokeColor(getColor(R.color.colorMapStroke))
                         .fillColor(getColor(R.color.colorMap)));
-
             }
 
             @Override
@@ -312,7 +375,6 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                     double longitude = location.getLongitude();
                     LatLng latLng = new LatLng(latitude, longitude);
                     previousLocation = latLng;
-                    //Geocoder geocoder = new Geocoder(getApplicationContext());
                     if (showCurrPos == 1) {
                         userLocation.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 18.5f));
                         showCurrPos = 1 - showCurrPos;
@@ -349,7 +411,17 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         wallet = findViewById(R.id.wallet_nav);
         settings = findViewById(R.id.settings_nav);
         bookedRide = findViewById(R.id.bookedRide);
+        endride = findViewById(R.id.end_ride);
+        showDetails = findViewById(R.id.showRideDetails);
+        details = findViewById(R.id.ride_details);
+        timeElapsed = findViewById(R.id.time_elapsed);
+        bookingTime = findViewById(R.id.booking_time);
         previousLocation = new LatLng(70, 70);
+        handler = new Handler();
+        bookedRide.setVisibility(View.GONE);
+        details.setVisibility(View.GONE);
+        showDetails.setVisibility(View.GONE);
+        openScanner.setVisibility(View.GONE);
     }
 
     private void setImageToMarker() {
@@ -372,21 +444,20 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
             case R.id.more_button:
                 isNavOpen = 1 - isNavOpen;
                 if (isNavOpen == 1) {
-                    openScanner.setVisibility(View.GONE);
-                    showCurrentPosition.setVisibility(View.GONE);
+                    openScanner.setVisibility(GONE);
+                    showCurrentPosition.setVisibility(GONE);
                     navMenu.setVisibility(View.VISIBLE);
                     more.startAnimation(clockwise);
                 } else {
                     openScanner.setVisibility(View.VISIBLE);
                     showCurrentPosition.setVisibility(View.VISIBLE);
-                    navMenu.setVisibility(View.GONE);
+                    navMenu.setVisibility(GONE);
                     more.startAnimation(anticlockise);
                 }
                 break;
             case R.id.profile:
             case R.id.profile_nav:
                 Toast.makeText(MapScreen.this, "Profile Page will come here", Toast.LENGTH_SHORT).show();
-                //Log.d("FirebaseFunctions", addNumber(5, 6).getResult());
                 break;
             case R.id.logout_nav:
                 new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Log Out")
@@ -408,6 +479,17 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                 displayMap();
                 break;
             case R.id.bookedRide:
+                //showDetailsFlag = 1 - showDetailsFlag;
+                if (showDetails.getVisibility() == View.VISIBLE) {
+                    showDetails.setVisibility(GONE);
+                    details.setVisibility(View.VISIBLE);
+                } else {
+                    showDetails.setVisibility(View.VISIBLE);
+                    details.setVisibility(GONE);
+                }
+                break;
+
+            case R.id.end_ride:
                 new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("End ride?")
                         .setMessage("Do you want to end this ride?")
                         .setPositiveButton("yes", new DialogInterface.OnClickListener() {
@@ -421,23 +503,6 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     }
 
     private void checkMinBalance() {
-        if (getPreDues() == 0 && getPreBalance() > 150)
-            scanQRCode();
-        else{
-            new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Warning!")
-                    .setMessage("You don't have enough balance to book a ride! Please clear your previous dues and have a minimum amount of Rs. 150 in your wallet to book this ride.")
-                    .setPositiveButton("Pay", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            startActivity(new Intent(MapScreen.this, WalletScreen.class));
-                            finish();
-                        }
-                    }).show();
-        }
-    }
-
-    private double getPreBalance() {
-        value = "0.0";
         DocumentReference documentReference = firebaseFirestore.collection("Users").document(account.getId());
         documentReference.get().
                 addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
@@ -446,7 +511,19 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         if (task.isSuccessful()) {
                             DocumentSnapshot document = task.getResult();
                             if (document.exists()) {
-                                value = document.get("Balance").toString();
+                                if (Double.valueOf(document.get("Balance").toString()) > 150 && Double.valueOf(document.get("Dues").toString()) == 0)
+                                    scanQRCode();
+                                else {
+                                    new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Warning!")
+                                            .setMessage("You don't have enough balance to book a ride! Please clear your previous dues and have a minimum amount of Rs. 150 in your wallet to book this ride.")
+                                            .setPositiveButton("Pay", new DialogInterface.OnClickListener() {
+                                                @Override
+                                                public void onClick(DialogInterface dialog, int which) {
+                                                    startActivity(new Intent(MapScreen.this, WalletScreen.class));
+                                                    finish();
+                                                }
+                                            }).show();
+                                }
                                 Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
                             } else {
                                 Log.d("DEBUG", "Found null document");
@@ -456,33 +533,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         }
                     }
                 });
-        return Double.valueOf(value);
     }
-
-    private double getPreDues() {
-        value = "0.0";
-        DocumentReference documentReference = firebaseFirestore.collection("Users").document(account.getId());
-        documentReference.get().
-                addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                    @SuppressLint("SetTextI18n")
-                    @Override
-                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                        if (task.isSuccessful()) {
-                            DocumentSnapshot document = task.getResult();
-                            if (document.exists()) {
-                                value = document.get("Dues").toString();
-                                Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
-                            } else {
-                                Log.d("DEBUG", "Found null document");
-                            }
-                        } else {
-                            Log.d("DEBUG", "Error finding the document");
-                        }
-                    }
-                });
-        return Double.valueOf(value);
-    }
-
 
     private void logOut() {
         client.signOut().addOnCompleteListener(this, new OnCompleteListener<Void>() {
@@ -501,14 +552,83 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         rideDetails.put("Status", "Free");
         rideDetails.put("Booked By", account.getId());
         rideDetails.put("End Time", Calendar.getInstance().getTime());
+        endedTime = Calendar.getInstance().getTimeInMillis();
+        EndingTime = Calendar.getInstance().getTime().toString();
+        getTime(bookedTime, endedTime)
+                .addOnCompleteListener(new OnCompleteListener<String>() {
+                    @Override
+                    public void onComplete(@NonNull Task<String> task) {
+                        if (!task.isSuccessful()) {
+                            Exception e = task.getException();
+                            if (e instanceof FirebaseFunctionsException) {
+                                FirebaseFunctionsException ffe = (FirebaseFunctionsException) e;
+                                FirebaseFunctionsException.Code code = ffe.getCode();
+                                Log.d("Functions", code.toString());
+                            }
+                            Log.w(TAG, "addNumbers:onFailure", e);
+                            return;
+                        }
+                        String result = task.getResult();
+                        Log.d("Functions", String.valueOf(result));
+                    }
+                });
+
         firebaseFirestore
                 .collection("Bikes")
                 .document(cycleID)
                 .update(rideDetails);
-
-        bookedRide.setVisibility(View.GONE);
+        rideDetails.clear();
+        rideDetails.put("Bike ID", "NULL");
+        rideDetails.put("Booking Time", "NULL");
+        firebaseFirestore.collection("Users").document(account.getId()).update(rideDetails);
+        handler.removeCallbacks(runnable);
+        bookedRide.setVisibility(GONE);
         openScanner.setVisibility(View.VISIBLE);
     }
+
+    private void storeHistory(String booking_time, String end_time, String time_elapsed, String cost, String plan) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("Booking Time", booking_time);
+        data.put("End Time", end_time);
+        data.put("Time Elapsed", time_elapsed);
+        data.put("Cost", cost);
+        data.put("Plan", plan);
+        firebaseFirestore.collection("Bikes").document(cycleID).collection(account.getId()).document(booking_time)
+                .set(data)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("Firestore-Login", "DocumentSnapshot successfully written!");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w("Firestore-Login", "Error writing document", e);
+                    }
+                });
+        Map<String, Object> dataforUser = new HashMap<>();
+        dataforUser.put("Booking Time", booking_time);
+        dataforUser.put("End Time", end_time);
+        dataforUser.put("Time Elapsed", time_elapsed);
+        dataforUser.put("Cost", cost);
+        dataforUser.put("Plan", plan);
+        firebaseFirestore.collection("Users").document(account.getId()).collection(cycleID).document(booking_time)
+                .set(dataforUser)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d("Firestore-Login", "DocumentSnapshot successfully written!");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Log.w("Firestore-Login", "Error writing document", e);
+                    }
+                });
+    }
+
 
     private void scanQRCode() {
         Intent intent = new Intent(this, BarcodeCaptureActivity.class);
@@ -542,34 +662,73 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         }
     }
 
-    private Task<String> addNumber(int first, int sec) {
-        // Create the arguments to the callable function.
-        Toast.makeText(MapScreen.this, "Inside the addNumber function", Toast.LENGTH_SHORT).show();
-        Map<String, Integer> data = new HashMap<>();
-        data.put("firstNumber", first);
-        data.put("secondNumber", sec);
-
+    private Task<String> getTime(long st, long et) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("startTime", st / 1000);
+        data.put("endTime", et / 1000);
+        data.put("plan", 0);
+        Log.d("Functions", "Inside the getTime function");
         return firebaseFunctions
-                .getHttpsCallable("addNumbers")
+                .getHttpsCallable("getTime")
                 .call(data)
                 .continueWith(new Continuation<HttpsCallableResult, String>() {
                     @Override
                     public String then(@NonNull Task<HttpsCallableResult> task) throws Exception {
-                        String result = (String) task.getResult().getData();
-                        Toast.makeText(MapScreen.this, result, Toast.LENGTH_SHORT).show();
-                        Log.d("DebX", "inside here");
-                        return result;
+                        Log.d("Functions", "Insidest the getTime function");
+                        //int result = (int)task.getResult().getData();
+
+                        task.addOnCompleteListener(new OnCompleteListener<HttpsCallableResult>() {
+                            @Override
+                            public void onComplete(@NonNull Task<HttpsCallableResult> task) {
+                                //  Object result = task.getResult().getData();
+                                Log.d("Burnout", task.getResult().getData().toString());
+                                extractDetails(task.getResult().getData().toString());
+                            }
+                        });
+                        return "Voila";
                     }
                 });
     }
 
+    private void extractDetails(String details) {
+        StringTokenizer stringTokenizer = new StringTokenizer(details, ",");
+        String timeElapsed = stringTokenizer.nextToken();
+        String cost = stringTokenizer.nextToken();
+        String plan = stringTokenizer.nextToken();
+        timeElapsed = timeElapsed.substring(timeElapsed.indexOf('=') + 1);
+        cost = cost.substring(cost.indexOf('=') + 1);
+        plan = plan.substring(plan.indexOf('=') + 1, plan.length() - 1);
+        Map<String, Object> rideDetails = new HashMap<>();
+        rideDetails.put("Dues", cost);
+        firebaseFirestore.collection("Users").
+                document(account.getId()).
+                update(rideDetails);
+        storeHistory(BookingTime, EndingTime, timeElapsed, cost, plan);
+        Log.d("DetailsF", "Cost: " + cost);
+        Log.d("DetailsF", "Time Elapsed: " + timeElapsed);
+        Log.d("DetailsF", "Plan: " + plan);
+        new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Ride Details")
+                .setMessage("Booking Time: " + timeElapsed + " seconds" + "\nCost: Rs." + cost + "\nPlan Active: " + plan)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        startActivity(new Intent(MapScreen.this, WalletScreen.class));
+                        finish();
+                    }
+                }).show();
+
+    }
 
     private void searchCycle(String display) {
         Toast.makeText(this, display, Toast.LENGTH_SHORT).show();
+        String time = Calendar.getInstance().getTime().toString();
+        bookedTime = Calendar.getInstance().getTimeInMillis();
+        BookingTime = Calendar.getInstance().getTime().toString();
         Map<String, Object> rideDetails = new HashMap<>();
         rideDetails.put("Status", "Booked");
         rideDetails.put("Booked By", account.getId());
-        rideDetails.put("Start Time", Calendar.getInstance().getTime());
+        rideDetails.put("Start Time", time);
+        bookingTime.setText(time);
         // Add a new document with a generated ID
         firebaseFirestore.collection("Bikes").document(display)
                 .set(rideDetails)
@@ -585,10 +744,40 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         Log.w("Firestore-Login", "Error writing document", e);
                     }
                 });
+        rideDetails.clear();
+        rideDetails.put("Bike ID", display);
+        rideDetails.put("Booking Time", time);
+        firebaseFirestore.collection("Users").document(account.getId())
+                .update(rideDetails);
         cycleID = display;
+        showTimeElapsed();
         bookedRide.setVisibility(View.VISIBLE);
+        details.setVisibility(View.GONE);
+        showDetails.setVisibility(View.VISIBLE);
         openScanner.setVisibility(View.GONE);
     }
+
+    private void showTimeElapsed() {
+        StartTime = SystemClock.uptimeMillis();
+        handler.postDelayed(runnable, 0);
+    }
+
+    public Runnable runnable = new Runnable() {
+
+        public void run() {
+            MillisecondTime = SystemClock.uptimeMillis() - StartTime;
+            UpdateTime = TimeBuff + MillisecondTime;
+            Seconds = (int) (UpdateTime / 1000);
+            Minutes = Seconds / 60;
+            Hours = Minutes / 60;
+            Seconds = Seconds % 60;
+            MilliSeconds = (int) (UpdateTime % 1000);
+            timeElapsed.setText(String.format("%02d", Hours) + " hrs " + String.format("%02d", Minutes) + " min "
+                    + String.format("%02d", Seconds) + " sec");
+            handler.postDelayed(this, 0);
+        }
+
+    };
 
     @Override
     public boolean onDrag(View v, DragEvent event) {

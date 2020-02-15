@@ -346,4 +346,11 @@ public class WalletScreen extends AppCompatActivity implements View.OnClickListe
                     }
                 });
     }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        startActivity(new Intent(WalletScreen.this, MapScreen.class));
+        finish();
+    }
 }

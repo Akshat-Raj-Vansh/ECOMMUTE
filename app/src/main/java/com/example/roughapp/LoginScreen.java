@@ -129,6 +129,7 @@ public class LoginScreen extends AppCompatActivity {
             userDetails.put("Dues", "0");
             userDetails.put("New", "1");
             userDetails.put("Plan", "Basic");
+            userDetails.put("Bike ID", "NULL");
             //  userDetails.put("Photo", personPhoto);
 
             // Add a new document with a generated ID
