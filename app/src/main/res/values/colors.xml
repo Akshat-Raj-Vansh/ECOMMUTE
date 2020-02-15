@@ -14,4 +14,7 @@
     <color name="colorMapStroke">#6119ECEC</color>
     <color name="colorWhiteDark">#F5F5F5</color>
     <color name="colorBlack">#000000</color>
+    <color name="colorRed">#FF0000</color>
+    <color name="colorGreen">#4CAF50</color>
+
 </resources>

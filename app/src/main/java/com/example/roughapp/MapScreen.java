@@ -52,6 +52,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.vision.barcode.Barcode;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -82,7 +83,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     private Button more, endride;
     private String BookingTime, EndingTime;
     private long bookedTime, endedTime;
-    private CircularImageView showCurrentPosition, bikeOptions;
+    private CircularImageView showCurrentPosition, bikeOptions, status, powerStatus;
     long MillisecondTime, StartTime, TimeBuff, UpdateTime = 0L;
     private ConstraintLayout navMenu;
     private CircularImageView profilePic;
@@ -101,6 +102,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
     private LinearLayout details;
     private static final int RC_BARCODE_CAPTURE = 9001;
     private int showCurrPos = 0;
+    private String discount;
     private static final String TAG = "BarcodeMain";
     int isNavOpen = 0;
     Handler handler;
@@ -151,9 +153,12 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         bookedRide.setOnClickListener(this);
         endride.setOnClickListener(this);
         bikeOptions.setOnClickListener(this);
+        status.setOnClickListener(this);
+        powerStatus.setOnClickListener(this);
         displayMap();
         NewAccountBonus();
         checkPreviousBooking();
+        updateStatus();
     }
 
     private void checkPreviousBooking() {
@@ -214,6 +219,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                                                     dialog.dismiss();
                                                 }
                                             }).show();
+                                    discount = "30";
                                 }
                                 Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
                             } else {
@@ -224,6 +230,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         }
                     }
                 });
+        firebaseFirestore.collection("Users").document(account.getId()).update("New", "0");
     }
 
     @Override
@@ -419,13 +426,17 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         details = findViewById(R.id.ride_details);
         timeElapsed = findViewById(R.id.time_elapsed);
         bookingTime = findViewById(R.id.booking_time);
+        powerStatus = findViewById(R.id.statusPower);
         previousLocation = new LatLng(70, 70);
         handler = new Handler();
+        status = findViewById(R.id.status);
+        status.setVisibility(GONE);
         bookedRide.setVisibility(View.GONE);
         details.setVisibility(View.GONE);
         showDetails.setVisibility(View.GONE);
         openScanner.setVisibility(View.GONE);
         bikeOptions = findViewById(R.id.lockUnlock);
+        powerStatus.setVisibility(GONE);
         bikeOptions.setVisibility(GONE);
     }
 
@@ -447,7 +458,20 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                 checkMinBalance();
                 break;
             case R.id.lockUnlock:
+                if (status.getVisibility() == View.GONE) {
+                    status.setVisibility(View.VISIBLE);
+                    powerStatus.setVisibility(View.VISIBLE);
+                } else {
+                    status.setVisibility(GONE);
+                    powerStatus.setVisibility(GONE);
+                }
+                break;
+            case R.id.statusPower:
+                 setPowerStatus();
+                break;
+            case R.id.status:
                 setLockStatus();
+                break;
             case R.id.more_button:
                 isNavOpen = 1 - isNavOpen;
                 if (isNavOpen == 1) {
@@ -509,8 +533,128 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         }
     }
 
+    private void updateStatus() {
+        firebaseDatabase.getReference("Bikes").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                String lockS = dataSnapshot.child("Bike 1").child("Lock").getValue(String.class);
+                String powerS = dataSnapshot.child("Bike 1").child("Power").getValue(String.class);
+             //   Toast.makeText(MapScreen.this, lockS, Toast.LENGTH_SHORT).show();
+             //   Toast.makeText(MapScreen.this, powerS, Toast.LENGTH_SHORT).show();
+                assert lockS != null;
+                if (lockS.equals("Locked")) {
+                    status.setImageResource(R.drawable.locked);
+                } else if (lockS.equals("Unlocked")) {
+                    status.setImageResource(R.drawable.unlocked);
+                }
+                assert powerS != null;
+                if (powerS.equals("On")) {
+                    powerStatus.setImageResource(R.drawable.on);
+                 //   Toast.makeText(MapScreen.this, "Here go we", Toast.LENGTH_SHORT).show();
+                } else if (powerS.equals("Off")) {
+                    powerStatus.setImageResource(R.drawable.off);
+                 //   Toast.makeText(MapScreen.this, "Here go we", Toast.LENGTH_SHORT).show();
+
+                }
+
+            }
+
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
+    private void setPowerStatus() {
+        firebaseDatabase.getReference("Bikes").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                String s = dataSnapshot.child("Bike 1").child("Power").getValue(String.class);
+               // Toast.makeText(MapScreen.this, s, Toast.LENGTH_SHORT).show();
+                assert s != null;
+                if (s.equals("Off")) {
+                    powerStatus.setImageResource(R.drawable.off);
+                    new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Power Status")
+                            .setMessage("Do you want to turn ON the engine of the ride?")
+                            .setPositiveButton("Turn ON", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    firebaseDatabase.getReference("Bikes").child("Bike 1").child("Power").setValue("On");
+                                    powerStatus.setImageResource(R.drawable.on);
+                                }
+                            }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    }).show();
+                  //  Toast.makeText(MapScreen.this, "Changing the icon to On", Toast.LENGTH_SHORT).show();
+                  //  return;
+                } else if (s.equals("On")) {
+                    powerStatus.setImageResource(R.drawable.on);
+                    new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Power Status")
+                            .setMessage("Do you want to turn off the engine of the ride?")
+                            .setPositiveButton("Turn OFF", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    firebaseDatabase.getReference("Bikes").child("Bike 1").child("Power").setValue("Off");
+                                    powerStatus.setImageResource(R.drawable.off);
+                                }
+                            }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    }).show();
+               //     Toast.makeText(MapScreen.this, "Changing the icon to Off", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+    }
+
     private void setLockStatus() {
-        Toast.makeText(MapScreen.this, "Temporary Lock status will come here along with engine status", Toast.LENGTH_SHORT).show();
+        firebaseDatabase.getReference("Bikes").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                String s = dataSnapshot.child("Bike 1").child("Lock").getValue(String.class);
+                Toast.makeText(MapScreen.this, s, Toast.LENGTH_SHORT).show();
+                assert s != null;
+                if (s.equals("Locked")) {
+                    status.setImageResource(R.drawable.locked);
+                    new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Warning!")
+                            .setMessage("Do you want to unlock the ride?")
+                            .setPositiveButton("Unlock", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    firebaseDatabase.getReference("Bikes").child("Bike 1").child("Lock").setValue("Unlocked");
+                                    status.setImageResource(R.drawable.unlocked);
+                                }
+                            }).setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    }).show();
+                    Toast.makeText(MapScreen.this, "Changing the icon to Locked", Toast.LENGTH_SHORT).show();
+                } else if (s.equals("Unlocked")) {
+                    status.setImageResource(R.drawable.unlocked);
+                    Toast.makeText(MapScreen.this, "Changing the icon to Unlocked", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+
+            }
+        });
+        //Toast.makeText(MapScreen.this, "Temporary Lock status will come here along with engine status", Toast.LENGTH_SHORT).show();
     }
 
     private void checkMinBalance() {
@@ -596,6 +740,8 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         bookedRide.setVisibility(GONE);
         openScanner.setVisibility(View.VISIBLE);
         bikeOptions.setVisibility(GONE);
+        powerStatus.setVisibility(GONE);
+        status.setVisibility(GONE);
     }
 
     private void storeHistory(String booking_time, String end_time, String time_elapsed, String cost, String plan) {
@@ -709,6 +855,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         String plan = stringTokenizer.nextToken();
         timeElapsed = timeElapsed.substring(timeElapsed.indexOf('=') + 1);
         cost = cost.substring(cost.indexOf('=') + 1);
+        // cost = Double.toString(Double.valueOf(cost));
         plan = plan.substring(plan.indexOf('=') + 1, plan.length() - 1);
         Map<String, Object> rideDetails = new HashMap<>();
         rideDetails.put("Dues", cost);
