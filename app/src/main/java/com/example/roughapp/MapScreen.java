@@ -150,6 +150,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         showCurrentPosition.setOnClickListener(this);
         bookedRide.setOnClickListener(this);
         endride.setOnClickListener(this);
+        bikeOptions.setOnClickListener(this);
         displayMap();
         NewAccountBonus();
         checkPreviousBooking();
@@ -175,11 +176,13 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                                     details.setVisibility(View.GONE);
                                     showDetails.setVisibility(View.VISIBLE);
                                     openScanner.setVisibility(View.GONE);
+                                    bikeOptions.setVisibility(View.VISIBLE);
                                 } else if (value.equals("NULL")) {
                                     bookedRide.setVisibility(View.GONE);
                                     details.setVisibility(View.GONE);
                                     showDetails.setVisibility(View.GONE);
                                     openScanner.setVisibility(View.VISIBLE);
+                                    bikeOptions.setVisibility(GONE);
                                 }
                             }
                             Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
@@ -422,6 +425,8 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         details.setVisibility(View.GONE);
         showDetails.setVisibility(View.GONE);
         openScanner.setVisibility(View.GONE);
+        bikeOptions = findViewById(R.id.lockUnlock);
+        bikeOptions.setVisibility(GONE);
     }
 
     private void setImageToMarker() {
@@ -441,6 +446,8 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
             case R.id.scan_qr:
                 checkMinBalance();
                 break;
+            case R.id.lockUnlock:
+                setLockStatus();
             case R.id.more_button:
                 isNavOpen = 1 - isNavOpen;
                 if (isNavOpen == 1) {
@@ -500,6 +507,10 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         }).setNegativeButton("no", null).show();
                 break;
         }
+    }
+
+    private void setLockStatus() {
+        Toast.makeText(MapScreen.this, "Temporary Lock status will come here along with engine status", Toast.LENGTH_SHORT).show();
     }
 
     private void checkMinBalance() {
@@ -584,6 +595,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         handler.removeCallbacks(runnable);
         bookedRide.setVisibility(GONE);
         openScanner.setVisibility(View.VISIBLE);
+        bikeOptions.setVisibility(GONE);
     }
 
     private void storeHistory(String booking_time, String end_time, String time_elapsed, String cost, String plan) {
@@ -755,6 +767,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         details.setVisibility(View.GONE);
         showDetails.setVisibility(View.VISIBLE);
         openScanner.setVisibility(View.GONE);
+        bikeOptions.setVisibility(View.VISIBLE);
     }
 
     private void showTimeElapsed() {
