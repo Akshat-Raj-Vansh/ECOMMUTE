@@ -832,7 +832,9 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         Log.w("Firestore-Login", "Error writing document", e);
                     }
                 });
+        cycleID = "00000";
     }
+
 
     private void antiTheft() {
         firebaseDatabase.getReference("Location of Bikes").child(cycleID).addValueEventListener(new ValueEventListener() {
@@ -897,7 +899,6 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
         rideDetails.put("Booking Time", "NULL");
         firebaseFirestore.collection("Users").document(account.getId()).update(rideDetails);
         firebaseDatabase.getReference("Bikes").child(cycleID).child("Status").setValue("Free");
-        cycleID = "00000";
         localValues.edit().putString("Booking Time", "").apply();
         // handler.removeCallbacks(runnable);
         bookedRide.setVisibility(GONE);
