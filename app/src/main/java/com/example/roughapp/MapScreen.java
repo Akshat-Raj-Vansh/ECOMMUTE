@@ -642,7 +642,7 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                         if (task.isSuccessful()) {
                             DocumentSnapshot document = task.getResult();
                             if (document.exists()) {
-                                if (true)
+                                if (Integer.valueOf(Objects.requireNonNull(document.getString("Dues"))) == 0 && Integer.valueOf(Objects.requireNonNull(document.getString("Balance"))) > 50)
                                     scanQRCode();
                                 else {
                                     new AlertDialog.Builder(MapScreen.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Warning!")
@@ -947,12 +947,20 @@ public class MapScreen extends FragmentActivity implements OnMapReadyCallback, V
                                     firebaseFirestore.collection("Users")
                                             .document(account.getId())
                                             .update("Balance", Integer.toString(Integer.valueOf(currentBal) - Integer.valueOf(cost)));
-                                } else if(Integer.valueOf(currentBal) > Integer.valueOf(cost)){
+                                } else if (Integer.valueOf(currentBal) == 0) {
                                     Map<String, Object> rideDetails = new HashMap<>();
                                     rideDetails.put("Dues", cost);
                                     firebaseFirestore.collection("Users").
                                             document(account.getId()).
                                             update(rideDetails);
+                                } else if (Integer.valueOf(currentBal) != 0 && Integer.valueOf(cost) > 0) {
+                                    String newcost = Integer.toString(Integer.valueOf(cost) - Integer.valueOf(currentBal));
+                                    Map<String, Object> newDue = new HashMap<>();
+                                    newDue.put("Dues", newcost);
+                                    newDue.put("Balance", "0");
+                                    firebaseFirestore.collection("Users").
+                                            document(account.getId()).
+                                            update(newDue);
                                 }
                             }
                             Log.d("DEBUG", "DocumentSnapshot data: " + document.getData());
